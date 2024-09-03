@@ -42,7 +42,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     generativeModel = GenerativeModel(
       model: "gemini-pro",
-      apiKey: "", // Your api key
+      apiKey: "", // your api key
     );
   }
 
@@ -50,6 +50,10 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     controller.dispose();
     super.dispose();
+  }
+
+  void addListener() {
+    stream.asBroadcastStream().listen((data) => setState(() => lastResponse = lastResponse + (data.text ?? "")));
   }
 
   @override
@@ -68,36 +72,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 StreamBuilder(
                   stream: stream,
                   builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      Column(
-                        children: <Widget>[
-                          const Icon(
-                            Icons.error_outline,
-                            color: Colors.red,
-                            size: 60,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Text('Error: ${snapshot.error}'),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text('Stack trace: ${snapshot.stackTrace}'),
-                          ),
-                        ],
-                      );
-                    }
                     switch (snapshot.connectionState) {
-                      case ConnectionState.waiting:
-                        return Column(
-                          children: [
-                            Text(lastResponse),
-                            const CircularProgressIndicator(),
-                          ],
-                        );
-                      case ConnectionState.active:
-                        lastResponse = lastResponse + (snapshot.data?.text ?? "");
-
+                      case ConnectionState.waiting || ConnectionState.active:
                         return Column(
                           children: [
                             Text(lastResponse),
@@ -106,11 +82,9 @@ class _MyHomePageState extends State<MyHomePage> {
                           ],
                         );
                       case ConnectionState.done:
-                        lastResponse = lastResponse + (snapshot.data?.text ?? "");
-
                         return Text(lastResponse);
                       default:
-                        return const Text("else");
+                        return const SizedBox();
                     }
                   },
                 ),
@@ -153,9 +127,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
     FocusScope.of(context).unfocus();
 
-    setState(() {
-      stream = generativeModel.generateContentStream([Content.text(text)]);
-      controller.clear();
-    });
+    stream = generativeModel.generateContentStream([Content.text(text)]).asBroadcastStream();
+    addListener();
+    controller.clear();
   }
 }
